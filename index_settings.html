@@ -4601,17 +4601,11 @@
                     if (parsed) this.persistBeowSubscription(parsed);
                     return this.beowSubscription;
                 }
+                this.beowSubscription = { is_active: false, status: 'inactive', expires_at: null, plan_months: 0 };
             } catch (e) {
                 console.error('syncBeowSubscriptionStatus error:', e);
+                this.beowSubscription = { is_active: false, status: 'inactive', expires_at: null, plan_months: 0 };
             }
-            try {
-                const own = parseSubscription(JSON.parse(localStorage.getItem(this.getBeowStorageKey()) || 'null'));
-                const shared = parseSubscription(JSON.parse(localStorage.getItem('tobebe_beow_subscription_current') || 'null'));
-                const fallback = (shared?.is_active ? shared : own) || shared || own;
-                if (fallback && !(this.beowSubscription?.is_active && !fallback.is_active)) {
-                    this.beowSubscription = fallback;
-                }
-            } catch {}
             return this.beowSubscription;
         }
 
