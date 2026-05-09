@@ -1905,6 +1905,7 @@
         const installSecureApiFetch = () => {
             if (window.__tobebeSecureFetchInstalled) return;
             const originalFetch = window.fetch.bind(window);
+            const trustedApiOrigins = new Set([window.location.origin, 'https://tobebe.online']);
             window.fetch = (input, init) => {
                 const isRequestObject = typeof Request !== 'undefined' && input instanceof Request;
                 const requestUrl = typeof input === 'string' ? input : ((input && input.url) ? input.url : '');
@@ -1912,10 +1913,12 @@
                 const nextInit = init ? { ...init } : {};
                 try {
                     const url = new URL(requestUrl, window.location.origin);
-                    const isApi = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
-                    if (isApi) {
+                    const isApiPath = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
+                    if (isApiPath) {
+                        const isTrustedApiOrigin = trustedApiOrigins.has(url.origin);
                         const headers = new Headers((nextInit.headers || (isRequestObject ? input.headers : undefined)) || {});
-                        if (nextInit.credentials === undefined) nextInit.credentials = 'include';
+                        if (!isTrustedApiOrigin && headers.has('Authorization')) headers.delete('Authorization');
+                        if (nextInit.credentials === undefined) nextInit.credentials = isTrustedApiOrigin ? 'include' : 'omit';
                         if (!(isRequestObject && !init)) {
                             url.searchParams.delete('user_id');
                             nextInput = url.toString();
@@ -1950,10 +1953,12 @@
         } catch(e) { currentUser = null; }
 
         const channelId = new URLSearchParams(window.location.search).get('channel_id') || '';
-        const escapeHtml = (str) => String(str || '').replace(/[&<>]/g, function(m) {
+        const escapeHtml = (str) => String(str || '').replace(/[&<>"']/g, function(m) {
             if (m === '&') return '&amp;';
             if (m === '<') return '&lt;';
             if (m === '>') return '&gt;';
+            if (m === '"') return '&quot;';
+            if (m === "'") return '&#39;';
             return m;
         });
 
