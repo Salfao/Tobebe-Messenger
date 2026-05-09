@@ -29257,22 +29257,12 @@ html.android-device .message-input:empty::before {
                 const data = await res.json();
                 if (data?.success && data.subscription) {
                     this.beowSubscription = parseSubscription(data.subscription);
-                    localStorage.setItem(this.getBeowStorageKey(), JSON.stringify(this.beowSubscription));
-                    localStorage.setItem('tobebe_beow_subscription_current', JSON.stringify(this.beowSubscription));
-                    localStorage.setItem('tobebe_beow_subscription_updated', Date.now().toString());
+                } else {
+                    this.beowSubscription = { is_active: false, status: 'inactive', expires_at: null, plan_months: 0 };
                 }
             } catch (e) {
                 console.debug('syncBeowSubscriptionStatus failed:', e);
-                try {
-                    const primary = parseSubscription(JSON.parse(localStorage.getItem(this.getBeowStorageKey()) || 'null'));
-                    const shared = parseSubscription(JSON.parse(localStorage.getItem('tobebe_beow_subscription_current') || 'null'));
-                    const cached = (shared?.is_active ? shared : primary) || shared || primary;
-                    if (cached) {
-                        if (!(this.beowSubscription?.is_active && !cached.is_active)) {
-                            this.beowSubscription = cached;
-                        }
-                    }
-                } catch {}
+                this.beowSubscription = { is_active: false, status: 'inactive', expires_at: null, plan_months: 0 };
             }
             this.applyBeowSubscriptionLimits();
             return this.beowSubscription;
@@ -33367,15 +33357,60 @@ html.android-device .message-input:empty::before {
         }
 
         async openImageViewerFromCache(src, mediaId = null, messageId = null, sourceEl = null) {
+            const accessAllowed = await this.ensureTimedMediaAccessBeforeOpen(messageId);
+            if (!accessAllowed) return;
             const normalized = this.normalizeMediaPath(src);
             const resolved = await this.getCachedMediaObjectUrl(normalized);
             this.openImageViewer(resolved || normalized, mediaId, messageId, sourceEl);
         }
 
         async openVideoPlayerFromCache(videoUrl, mediaId = null, messageId = null, sourceEl = null) {
+            const accessAllowed = await this.ensureTimedMediaAccessBeforeOpen(messageId);
+            if (!accessAllowed) return;
             const normalized = this.normalizeMediaPath(videoUrl);
             const resolved = await this.getCachedMediaObjectUrl(normalized);
             this.openVideoPlayer(resolved || normalized, mediaId, messageId, sourceEl);
+        }
+
+        async ensureTimedMediaAccessBeforeOpen(messageId) {
+            const id = Number(messageId) || 0;
+            if (!id) return true;
+            const message = this.messages.find((item) => Number(item.id) === id);
+            const meta = message?.media_meta || null;
+            if (!message || !meta || (meta.ttl_mode !== 'once' && meta.ttl_mode !== 'seconds')) return true;
+            const isSender = Number(message.sender_id) === Number(this.currentUser?.id);
+            if (isSender && !meta.opened_at) return true;
+            if (meta.expires_at && new Date(meta.expires_at).getTime() <= Date.now()) {
+                this.messages = this.messages.filter(item => Number(item.id) !== id);
+                this.updateMessages(true);
+                return false;
+            }
+            if (meta.opened_at && new Date(meta.opened_at).getTime() > 0) return true;
+            try {
+                const res = await fetch(this.apiUrl + '?action=mark_media_view_started', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message_id: id,
+                        user_id: this.currentUser?.id
+                    })
+                });
+                const data = await res.json();
+                if (data?.success && data?.expired) {
+                    this.messages = this.messages.filter(item => Number(item.id) !== id);
+                    this.updateMessages(true);
+                    return false;
+                }
+                if (!data?.success) return false;
+                if (data.opened_at) meta.opened_at = data.opened_at;
+                if (Object.prototype.hasOwnProperty.call(data || {}, 'expires_at')) meta.expires_at = data.expires_at || null;
+                if (Object.prototype.hasOwnProperty.call(data || {}, 'total_seconds')) meta.total_seconds = Number(data.total_seconds) || null;
+                if (Object.prototype.hasOwnProperty.call(data || {}, 'viewer_id')) meta.viewer_id = Number(data.viewer_id) || null;
+                return true;
+            } catch (e) {
+                this.showToast('Не удалось открыть медиа');
+                return false;
+            }
         }
 
         renderMessageStatus(status) {
@@ -33766,12 +33801,14 @@ html.android-device .message-input:empty::before {
                 const imageUrl = this.normalizeMediaPath(msg.file_path);
                 const encodedImageUrl = encodeURIComponent(imageUrl || '');
                 const hiddenBurn = msg.media_meta && (msg.media_meta.ttl_mode === 'once' || msg.media_meta.ttl_mode === 'seconds');
+                const imageSrc = hiddenBurn ? this.getBurnPreviewPlaceholderSrc() : imageUrl;
+                const imageSourceAttr = hiddenBurn ? '' : `data-media-src="${imageUrl}"`;
                 const isUploadingTemp = String(msg.id || '').startsWith('temp_upload_') && msg.status === 'sending';
                 const imageLoadHandlers = isUploadingTemp ? '' : `onload="app.onMediaLoaded('${mediaId}')" onerror="app.onMediaLoaded('${mediaId}')"`;
                 const loadingClass = this.loadedMediaIds.has(mediaId) ? '' : ' media-loading';
                 return `
                     <div class="message-media${loadingClass}" data-media-id="${mediaId}" data-message-id="${msg.id}" onclick="app.openImageViewerFromCache(decodeURIComponent('${encodedImageUrl}'), '${mediaId}', '${msg.id}', this)">
-                        <img src="${imageUrl}" data-media-src="${imageUrl}" alt="image" loading="lazy" ${imageLoadHandlers} style="${hiddenBurn ? 'filter: blur(16px) brightness(0.75);' : ''}">
+                        <img src="${imageSrc}" ${imageSourceAttr} alt="image" loading="lazy" ${imageLoadHandlers} style="${hiddenBurn ? 'filter: blur(16px) brightness(0.75);' : ''}">
                         ${hiddenBurn ? this.renderMediaBurnOverlay(msg.media_meta) : ''}
                         <div class="media-loading-overlay">
                             <button class="media-loading-cancel" onclick="event.stopPropagation(); app.cancelMediaLoad('${mediaId}')">
@@ -33792,9 +33829,11 @@ html.android-device .message-input:empty::before {
                     : `onload="app.onMediaLoaded('${mediaId}')" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22300%22%20height%3D%22200%22%20viewBox%3D%220%200%20300%20200%22%3E%3Crect%20width%3D%22300%22%20height%3D%22200%22%20fill%3D%22%232C2F38%22%2F%3E%3Ctext%20x%3D%22150%22%20y%3D%22110%22%20font-size%3D%2220%22%20fill%3D%22%238A8F99%22%20text-anchor%3D%22middle%22%3E📹%20Видео%3C%2Ftext%3E%3C%2Fsvg%3E'; app.onMediaLoaded('${mediaId}')"`;
                 const loadingClass = this.loadedMediaIds.has(mediaId) ? '' : ' media-loading';
                 const hiddenBurn = msg.media_meta && (msg.media_meta.ttl_mode === 'once' || msg.media_meta.ttl_mode === 'seconds');
+                const videoThumbSrc = hiddenBurn ? this.getBurnPreviewPlaceholderSrc() : `${videoUrl}#t=0.1`;
+                const videoSourceAttr = hiddenBurn ? '' : `data-media-src="${videoUrl}"`;
                 return `
                     <div class="video-thumbnail message-media${loadingClass}" data-media-id="${mediaId}" data-message-id="${msg.id}" onclick="app.openVideoPlayerFromCache(decodeURIComponent('${encodedVideoUrl}'), '${mediaId}', '${msg.id}', this)">
-                        <img src="${videoUrl}#t=0.1" data-media-src="${videoUrl}" alt="video thumbnail" loading="lazy" decoding="async" ${videoLoadHandlers} style="${hiddenBurn ? 'filter: blur(16px) brightness(0.75);' : ''}">
+                        <img src="${videoThumbSrc}" ${videoSourceAttr} alt="video thumbnail" loading="lazy" decoding="async" ${videoLoadHandlers} style="${hiddenBurn ? 'filter: blur(16px) brightness(0.75);' : ''}">
                         ${hiddenBurn ? this.renderMediaBurnOverlay(msg.media_meta) : ''}
                         <span class="video-duration">${this.formatVideoDuration(msg.file_size)}</span>
                         <div class="media-loading-overlay">
@@ -35994,6 +36033,10 @@ html.android-device .message-input:empty::before {
             return btoa(binary);
         }
 
+        getBurnPreviewPlaceholderSrc() {
+            return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22320%22 height=%22220%22 viewBox=%220 0 320 220%22%3E%3Crect width=%22320%22 height=%22220%22 fill=%22%2323262f%22/%3E%3Ctext x=%22160%22 y=%22114%22 text-anchor=%22middle%22 font-size=%2232%22 fill=%22%238A8F99%22%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E';
+        }
+
         base64ToBytes(base64) {
             const binary = atob(base64);
             const bytes = new Uint8Array(binary.length);
@@ -36001,18 +36044,94 @@ html.android-device .message-input:empty::before {
             return bytes;
         }
 
+        openCryptoKeyDatabase() {
+            if (!('indexedDB' in window)) return Promise.resolve(null);
+            if (this.cryptoKeyDbPromise) return this.cryptoKeyDbPromise;
+            this.cryptoKeyDbPromise = new Promise((resolve) => {
+                let settled = false;
+                const finish = (value) => {
+                    if (settled) return;
+                    settled = true;
+                    resolve(value);
+                };
+                try {
+                    const request = indexedDB.open('tobebe_crypto_v1', 1);
+                    request.onupgradeneeded = () => {
+                        const db = request.result;
+                        if (!db.objectStoreNames.contains('keys')) {
+                            db.createObjectStore('keys');
+                        }
+                    };
+                    request.onsuccess = () => finish(request.result);
+                    request.onerror = () => finish(null);
+                    request.onblocked = () => finish(null);
+                } catch (_) {
+                    finish(null);
+                }
+            });
+            return this.cryptoKeyDbPromise;
+        }
+
+        async getCryptoKeyFromIndexedDb(keyName) {
+            const db = await this.openCryptoKeyDatabase();
+            if (!db || !keyName) return null;
+            return new Promise((resolve) => {
+                try {
+                    const tx = db.transaction('keys', 'readonly');
+                    const store = tx.objectStore('keys');
+                    const request = store.get(String(keyName));
+                    request.onsuccess = () => {
+                        const value = request.result;
+                        const isCryptoKey = typeof CryptoKey !== 'undefined' && value instanceof CryptoKey;
+                        resolve(isCryptoKey ? value : null);
+                    };
+                    request.onerror = () => resolve(null);
+                } catch (_) {
+                    resolve(null);
+                }
+            });
+        }
+
+        async setCryptoKeyToIndexedDb(keyName, key) {
+            const db = await this.openCryptoKeyDatabase();
+            const isCryptoKey = typeof CryptoKey !== 'undefined' && key instanceof CryptoKey;
+            if (!db || !keyName || !isCryptoKey) return false;
+            return new Promise((resolve) => {
+                try {
+                    const tx = db.transaction('keys', 'readwrite');
+                    const store = tx.objectStore('keys');
+                    store.put(key, String(keyName));
+                    tx.oncomplete = () => resolve(true);
+                    tx.onerror = () => resolve(false);
+                } catch (_) {
+                    resolve(false);
+                }
+            });
+        }
+
         async getFavoriteSecretCryptoKey() {
             this.ensureFavoriteStorageState();
             if (this.favoriteSecretCryptoKey) return this.favoriteSecretCryptoKey;
+            const persisted = await this.getCryptoKeyFromIndexedDb(this.favoriteSecretKeyStorageKey);
+            if (persisted) {
+                this.favoriteSecretCryptoKey = persisted;
+                return persisted;
+            }
             const stored = localStorage.getItem(this.favoriteSecretKeyStorageKey);
             if (stored) {
-                const jwk = JSON.parse(stored);
-                this.favoriteSecretCryptoKey = await crypto.subtle.importKey('jwk', jwk, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
-                return this.favoriteSecretCryptoKey;
+                try {
+                    const jwk = JSON.parse(stored);
+                    const migrated = await crypto.subtle.importKey('jwk', jwk, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+                    this.favoriteSecretCryptoKey = migrated;
+                    await this.setCryptoKeyToIndexedDb(this.favoriteSecretKeyStorageKey, migrated);
+                    localStorage.removeItem(this.favoriteSecretKeyStorageKey);
+                    return migrated;
+                } catch (_) {
+                    localStorage.removeItem(this.favoriteSecretKeyStorageKey);
+                }
             }
-            const generated = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
-            const exported = await crypto.subtle.exportKey('jwk', generated);
-            localStorage.setItem(this.favoriteSecretKeyStorageKey, JSON.stringify(exported));
+            const generated = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+            await this.setCryptoKeyToIndexedDb(this.favoriteSecretKeyStorageKey, generated);
             this.favoriteSecretCryptoKey = generated;
             return generated;
         }
