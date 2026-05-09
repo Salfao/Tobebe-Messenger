@@ -2832,6 +2832,7 @@
     const installSecureApiFetch = () => {
         if (window.__tobebeSecureFetchInstalled) return;
         const originalFetch = window.fetch.bind(window);
+        const trustedApiOrigins = new Set([window.location.origin, 'https://tobebe.online']);
         window.fetch = (input, init) => {
             const isRequestObject = typeof Request !== 'undefined' && input instanceof Request;
             const requestUrl = typeof input === 'string' ? input : ((input && input.url) ? input.url : '');
@@ -2839,17 +2840,13 @@
             const nextInit = init ? { ...init } : {};
             try {
                 const url = new URL(requestUrl, window.location.origin);
-                const isApi = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
-                if (isApi) {
+                const isApiPath = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
+                if (isApiPath) {
+                    const isTrustedApiOrigin = trustedApiOrigins.has(url.origin);
                     const headers = new Headers((nextInit.headers || (isRequestObject ? input.headers : undefined)) || {});
-                    const sessionToken = (localStorage.getItem('tobebe_session_token') || '').trim();
-                    if (sessionToken) {
-                        headers.set('Authorization', `Bearer ${sessionToken}`);
-                    } else if (headers.has('Authorization')) {
-                        headers.delete('Authorization');
-                    }
+                    if (!isTrustedApiOrigin && headers.has('Authorization')) headers.delete('Authorization');
                     if (nextInit.credentials === undefined) {
-                        nextInit.credentials = 'include';
+                        nextInit.credentials = isTrustedApiOrigin ? 'include' : 'omit';
                     }
                     if (isRequestObject && !init) {
                         nextInput = input;
@@ -2981,10 +2978,6 @@
                 const data = await res.json();
                 if (data && data.success && data.user) {
                     this.currentUser = data.user;
-                    if (data.session_token) {
-                        localStorage.setItem('tobebe_session_token', String(data.session_token));
-                        localStorage.setItem(`tobebe_session_token_${Number(data.user.id)}`, String(data.session_token));
-                    }
                     localStorage.setItem('tobebe_user', JSON.stringify(data.user));
                     return true;
                 }
@@ -3711,7 +3704,6 @@
             this.accounts = (this.accounts || []).filter(account => account && account.id);
             const currentId = this.currentUser?.id;
             const exists = this.accounts.some(account => Number(account.id) === Number(currentId));
-            const currentToken = (localStorage.getItem('tobebe_session_token') || '').trim();
             if (!exists && this.currentUser) {
                 this.accounts.push({
                     id: this.currentUser.id,
@@ -3719,32 +3711,24 @@
                     username: this.currentUser.username,
                     display_name: this.currentUser.display_name,
                     avatar: this.currentUser.avatar,
-                    session_token: currentToken || '',
                     current: true
                 });
             }
-            this.accounts = this.accounts.map(account => {
-                const isCurrent = Number(account.id) === Number(currentId);
-                const token = String(
-                    account.session_token
-                    || account.sessionToken
-                    || account.token
-                    || localStorage.getItem(`tobebe_session_token_${Number(account.id)}`)
-                    || ''
-                ).trim();
-                return {
-                    ...account,
-                    current: isCurrent,
-                    session_token: isCurrent ? (currentToken || token) : token
-                };
-            });
-            if (this.currentUser?.id && currentToken) {
-                localStorage.setItem(`tobebe_session_token_${Number(this.currentUser.id)}`, currentToken);
-            }
+            this.accounts = this.accounts.map(account => ({ ...account, current: Number(account.id) === Number(currentId) }));
             localStorage.setItem('tobebe_accounts', JSON.stringify(this.accounts));
             const container = document.getElementById('accountsList');
             if (container) {
-                container.innerHTML = this.accounts.map(account => `<div class="account-item ${account.current ? 'active' : ''}" onclick="app.switchAccount(${Number(account.id)})"><div class="account-avatar">${account.avatar ? `<img src="${account.avatar}">` : (account.display_name || account.username).charAt(0)}</div><div class="account-info"><div class="account-name">${account.display_name || account.username}${account.current ? '<span class="account-badge">Текущий</span>' : ''}</div><div class="account-email">${account.email}</div></div></div>`).join('');
+                container.innerHTML = this.accounts.map(account => {
+                    const accountId = Number(account.id) || 0;
+                    const displayNameRaw = String(account.display_name || account.username || 'Пользователь');
+                    const displayName = this.escapeHtml(displayNameRaw);
+                    const email = this.escapeHtml(String(account.email || ''));
+                    const avatarUrl = this.normalizeSafeHttpUrl(account.avatar || '');
+                    const avatarHtml = avatarUrl
+                        ? `<img src="${this.escapeHtml(avatarUrl)}">`
+                        : this.escapeHtml(displayNameRaw.charAt(0).toUpperCase() || '?');
+                    return `<div class="account-item ${account.current ? 'active' : ''}" onclick="app.switchAccount(${accountId})"><div class="account-avatar">${avatarHtml}</div><div class="account-info"><div class="account-name">${displayName}${account.current ? '<span class="account-badge">Текущий</span>' : ''}</div><div class="account-email">${email}</div></div></div>`;
+                }).join('');
                 const countEl = document.getElementById('accountsCount');
                 if (countEl) countEl.textContent = `${this.accounts.length} ${this.getRussianWord(this.accounts.length, ['аккаунт', 'аккаунта', 'аккаунтов'])}`;
             }
@@ -3754,54 +3738,17 @@
             if (Number(accountId) === Number(this.currentUser.id)) return;
             const account = this.accounts.find(a => Number(a.id) === Number(accountId));
             if (account) {
-                const targetToken = String(
-                    account.session_token
-                    || account.sessionToken
-                    || account.token
-                    || localStorage.getItem(`tobebe_session_token_${Number(accountId)}`)
-                    || ''
-                ).trim();
-                if (!targetToken) {
-                    localStorage.removeItem('tobebe_session_token');
-                    this.accounts = this.accounts.map(a => ({ ...a, current: Number(a.id) === Number(accountId) }));
-                    localStorage.setItem('tobebe_accounts', JSON.stringify(this.accounts));
-                    this.currentUser = { id: account.id, email: account.email, username: account.username, display_name: account.display_name, avatar: account.avatar };
-                    localStorage.setItem('tobebe_user', JSON.stringify(this.currentUser));
-                    this.updateUserCard();
-                    document.getElementById('currentEmail').textContent = this.currentUser.email || 'user@example.com';
-                    this.loadChatFolders();
-                    this.renderChatFolders();
-                    this.loadAccounts();
-                    this.renderSilentUsers();
-                    this.showToast('Переключено. Для синхронизации данных выполните вход в этот аккаунт один раз.');
-                    return;
-                }
-                localStorage.setItem('tobebe_session_token', targetToken);
-                localStorage.setItem(`tobebe_session_token_${Number(accountId)}`, targetToken);
                 this.accounts = this.accounts.map(a => ({ ...a, current: Number(a.id) === Number(accountId) }));
                 localStorage.setItem('tobebe_accounts', JSON.stringify(this.accounts));
-                try {
-                    const meRes = await fetch(`${this.apiUrl}?action=get_me`, { cache: 'no-store' });
-                    const meData = await meRes.json();
-                    if (meData?.success && meData.user && Number(meData.user.id) === Number(accountId)) {
-                        this.currentUser = meData.user;
-                    } else {
-                        this.currentUser = { id: account.id, email: account.email, username: account.username, display_name: account.display_name, avatar: account.avatar };
-                    }
-                } catch (_) {
-                    this.currentUser = { id: account.id, email: account.email, username: account.username, display_name: account.display_name, avatar: account.avatar };
-                }
+                this.currentUser = { id: account.id, email: account.email, username: account.username, display_name: account.display_name, avatar: account.avatar };
                 localStorage.setItem('tobebe_user', JSON.stringify(this.currentUser));
                 this.updateUserCard();
                 document.getElementById('currentEmail').textContent = this.currentUser.email || 'user@example.com';
-                await this.loadSessions();
-                await this.loadPrivacySettings();
-                await this.refreshStorageStats();
                 this.loadChatFolders();
                 this.renderChatFolders();
                 this.loadAccounts();
                 this.renderSilentUsers();
-                this.showToast(`Переключено на @${this.currentUser.username}`);
+                this.showToast('Переключено. Для синхронизации данных выполните вход в этот аккаунт один раз.');
             }
         }
 
@@ -3848,7 +3795,6 @@
                     username: added.username,
                     display_name: added.display_name,
                     avatar: added.avatar,
-                    session_token: String(data.session_token || ''),
                     current: true
                 };
                 this.accounts = this.accounts.map(account => ({ ...account, current: false }));
@@ -3856,10 +3802,6 @@
                 else this.accounts.push(accountData);
                 localStorage.setItem('tobebe_accounts', JSON.stringify(this.accounts));
                 this.currentUser = accountData;
-                if (accountData.session_token) {
-                    localStorage.setItem('tobebe_session_token', accountData.session_token);
-                    localStorage.setItem(`tobebe_session_token_${Number(accountData.id)}`, accountData.session_token);
-                }
                 localStorage.setItem('tobebe_user', JSON.stringify(this.currentUser));
                 this.hideAddAccountSheet();
                 await this.loadSessions();
@@ -4061,7 +4003,16 @@
             if (!container) return;
             container.innerHTML = this.silentUsers.map(userId => {
                 const user = this.users?.find(u => u.id === userId) || { id: userId, username: 'user' + userId, display_name: 'Пользователь' };
-                return `<div class="silent-user-item"><div class="silent-user-avatar">${user.avatar ? `<img src="${user.avatar}">` : (user.display_name || user.username).charAt(0)}</div><div class="silent-user-info"><div class="silent-user-name">${user.display_name || user.username}</div><div class="silent-user-username">@${user.username}</div></div><button class="remove-silent" onclick="app.removeSilentUser(${userId})"><svg><use xlink:href="#icon-close"/></svg></button></div>`;
+                const safeUserId = Number(userId) || 0;
+                const displayNameRaw = String(user.display_name || user.username || 'Пользователь');
+                const usernameRaw = String(user.username || '');
+                const displayName = this.escapeHtml(displayNameRaw);
+                const username = this.escapeHtml(usernameRaw);
+                const avatarUrl = this.normalizeSafeHttpUrl(user.avatar || '');
+                const avatarHtml = avatarUrl
+                    ? `<img src="${this.escapeHtml(avatarUrl)}">`
+                    : this.escapeHtml(displayNameRaw.charAt(0).toUpperCase() || '?');
+                return `<div class="silent-user-item"><div class="silent-user-avatar">${avatarHtml}</div><div class="silent-user-info"><div class="silent-user-name">${displayName}</div><div class="silent-user-username">@${username}</div></div><button class="remove-silent" onclick="app.removeSilentUser(${safeUserId})"><svg><use xlink:href="#icon-close"/></svg></button></div>`;
             }).join('');
         }
 
@@ -4090,7 +4041,18 @@
                 if (data.success && data.users) {
                     const results = data.users.filter(u => !this.silentUsers.includes(u.id));
                     if (results.length === 0) document.getElementById('silentUserResults').innerHTML = '<div style="text-align: center; padding: 12px; color: #8A8F99;">Пользователи не найдены</div>';
-                    else document.getElementById('silentUserResults').innerHTML = results.map(user => `<div class="silent-user-item" onclick="app.selectSilentUser(${user.id})" style="cursor: pointer;"><div class="silent-user-avatar">${user.avatar ? `<img src="${user.avatar}">` : (user.display_name || user.username).charAt(0)}</div><div class="silent-user-info"><div class="silent-user-name">${user.display_name || user.username}</div><div class="silent-user-username">@${user.username}</div></div></div>`).join('');
+                    else document.getElementById('silentUserResults').innerHTML = results.map(user => {
+                        const safeUserId = Number(user.id) || 0;
+                        const displayNameRaw = String(user.display_name || user.username || 'Пользователь');
+                        const usernameRaw = String(user.username || '');
+                        const displayName = this.escapeHtml(displayNameRaw);
+                        const username = this.escapeHtml(usernameRaw);
+                        const avatarUrl = this.normalizeSafeHttpUrl(user.avatar || '');
+                        const avatarHtml = avatarUrl
+                            ? `<img src="${this.escapeHtml(avatarUrl)}">`
+                            : this.escapeHtml(displayNameRaw.charAt(0).toUpperCase() || '?');
+                        return `<div class="silent-user-item" onclick="app.selectSilentUser(${safeUserId})" style="cursor: pointer;"><div class="silent-user-avatar">${avatarHtml}</div><div class="silent-user-info"><div class="silent-user-name">${displayName}</div><div class="silent-user-username">@${username}</div></div></div>`;
+                    }).join('');
                 }
             } catch (e) { console.error('Error searching users:', e); }
         }
@@ -4355,7 +4317,7 @@
             }
             list.innerHTML = this.folderChatCandidates.map(user => `
                 <div class="folder-chat-picker-item ${this.pendingFolderChatIds.includes(user.id) ? 'active' : ''}" data-folder-chat-id="${user.id}">
-                    <div class="folder-selected-chat-avatar">${user.avatar ? `<img src="${user.avatar}">` : this.escapeHtml((user.display_name || user.username).charAt(0).toUpperCase())}</div>
+                    <div class="folder-selected-chat-avatar">${this.normalizeSafeHttpUrl(user.avatar || '') ? `<img src="${this.escapeHtml(this.normalizeSafeHttpUrl(user.avatar || ''))}">` : this.escapeHtml((user.display_name || user.username).charAt(0).toUpperCase())}</div>
                     <div class="chat-folder-card-info">
                         <div class="chat-folder-card-name">${this.escapeHtml(user.display_name)}</div>
                         <div class="chat-folder-card-meta">@${this.escapeHtml(user.username)}</div>
@@ -4389,7 +4351,7 @@
             wrap.classList.add('expanded');
             container.innerHTML = selectedUsers.map(user => `
                 <div class="folder-selected-chat-item">
-                    <div class="folder-selected-chat-avatar">${user.avatar ? `<img src="${user.avatar}">` : this.escapeHtml((user.display_name || user.username).charAt(0).toUpperCase())}</div>
+                    <div class="folder-selected-chat-avatar">${this.normalizeSafeHttpUrl(user.avatar || '') ? `<img src="${this.escapeHtml(this.normalizeSafeHttpUrl(user.avatar || ''))}">` : this.escapeHtml((user.display_name || user.username).charAt(0).toUpperCase())}</div>
                     <div class="folder-selected-chat-name">${this.escapeHtml(user.display_name)}</div>
                 </div>
             `).join('');
@@ -4412,7 +4374,7 @@
                 return;
             }
             const folder = {
-                id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                id: `${Date.now()}_${this.getSecureRandomString(6)}`,
                 name,
                 color: this.selectedFolderColor,
                 chatIds: [...new Set(this.pendingFolderChatIds.map(Number))],
@@ -4458,7 +4420,54 @@
 
         validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 
-        escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
+        escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        normalizeSafeHttpUrl(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+            const compact = raw.replace(/[\u0000-\u001F\u007F\s]+/g, '');
+            const normalized = compact.startsWith('www.') ? `https://${compact}` : compact;
+            try {
+                const parsed = new URL(normalized, window.location.origin);
+                const protocol = String(parsed.protocol || '').toLowerCase();
+                if (protocol !== 'http:' && protocol !== 'https:') return '';
+                return parsed.href;
+            } catch (_) {
+                return '';
+            }
+        }
+
+        getSecureRandomInt(maxExclusive) {
+            const max = Number(maxExclusive);
+            if (!Number.isFinite(max) || max <= 0) return 0;
+            const cryptoObj = window.crypto || window.msCrypto;
+            if (!cryptoObj || typeof cryptoObj.getRandomValues !== 'function') return Math.floor(Math.random() * max);
+            const uint32Limit = 0x100000000;
+            const safeLimit = Math.floor(uint32Limit / max) * max;
+            const buffer = new Uint32Array(1);
+            do {
+                cryptoObj.getRandomValues(buffer);
+            } while (buffer[0] >= safeLimit);
+            return buffer[0] % max;
+        }
+
+        getSecureRandomString(length = 8, alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789') {
+            const targetLength = Math.max(1, Number(length) || 1);
+            const chars = String(alphabet || 'abcdefghijklmnopqrstuvwxyz0123456789');
+            if (chars.length <= 1) return chars || 'a';
+            let result = '';
+            for (let i = 0; i < targetLength; i += 1) {
+                result += chars[this.getSecureRandomInt(chars.length)];
+            }
+            return result;
+        }
 
         getRussianWord(number, titles) { const cases = [2, 0, 1, 1, 1, 2]; return titles[(number % 100 > 4 && number % 100 < 20) ? 2 : cases[Math.min(number % 10, 5)]]; }
 
