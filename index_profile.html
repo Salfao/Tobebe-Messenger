@@ -5096,7 +5096,6 @@
 
             async syncBeowSubscriptionStatus() {
                 if (!this.currentUser?.id) return this.beowSubscription;
-                const storageKey = `tobebe_beow_subscription_${this.currentUser.id}`;
                 const parseSubscription = (raw) => {
                     if (!raw || typeof raw !== 'object') return null;
                     return {
@@ -5114,22 +5113,13 @@
                     }
                     const data = await res.json();
                     if (data?.success && data.subscription) {
-                        this.beowSubscription = parseSubscription(data.subscription);
-                        localStorage.setItem(storageKey, JSON.stringify(this.beowSubscription));
-                        localStorage.setItem('tobebe_beow_subscription_current', JSON.stringify(this.beowSubscription));
-                        localStorage.setItem('tobebe_beow_subscription_updated', Date.now().toString());
+                        this.beowSubscription = parseSubscription(data.subscription) || { is_active: false, status: 'inactive', expires_at: null, plan_months: 0 };
                         return this.beowSubscription;
                     }
+                    this.beowSubscription = { is_active: false, status: 'inactive', expires_at: null, plan_months: 0 };
                 } catch (e) {
+                    this.beowSubscription = { is_active: false, status: 'inactive', expires_at: null, plan_months: 0 };
                 }
-                try {
-                    const primary = parseSubscription(JSON.parse(localStorage.getItem(storageKey) || 'null'));
-                    const shared = parseSubscription(JSON.parse(localStorage.getItem('tobebe_beow_subscription_current') || 'null'));
-                    const cached = (shared?.is_active ? shared : primary) || shared || primary;
-                    if (cached && !(this.beowSubscription?.is_active && !cached.is_active)) {
-                        this.beowSubscription = cached;
-                    }
-                } catch {}
                 return this.beowSubscription;
             }
 
