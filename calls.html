@@ -849,6 +849,7 @@
         const installSecureApiFetch = () => {
             if (window.__tobebeSecureFetchInstalled) return;
             const originalFetch = window.fetch.bind(window);
+            const trustedApiOrigins = new Set([window.location.origin, 'https://tobebe.online']);
             window.fetch = (input, init) => {
                 const isRequestObject = typeof Request !== 'undefined' && input instanceof Request;
                 const requestUrl = typeof input === 'string' ? input : ((input && input.url) ? input.url : '');
@@ -856,10 +857,12 @@
                 const nextInit = init ? { ...init } : {};
                 try {
                     const url = new URL(requestUrl, window.location.origin);
-                    const isApi = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
-                    if (isApi) {
+                    const isApiPath = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
+                    if (isApiPath) {
+                        const isTrustedApiOrigin = trustedApiOrigins.has(url.origin);
                         const headers = new Headers((nextInit.headers || (isRequestObject ? input.headers : undefined)) || {});
-                        if (nextInit.credentials === undefined) nextInit.credentials = 'include';
+                        if (!isTrustedApiOrigin && headers.has('Authorization')) headers.delete('Authorization');
+                        if (nextInit.credentials === undefined) nextInit.credentials = isTrustedApiOrigin ? 'include' : 'omit';
                         if (!(isRequestObject && !init)) {
                             url.searchParams.delete('user_id');
                             nextInput = url.toString();
