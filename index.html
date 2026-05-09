@@ -4166,12 +4166,38 @@
             color: #FFFFFF;
             overflow: hidden;
             flex-shrink: 0;
+            position: relative;
+            isolation: isolate;
         }
 
         .search-result-avatar img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+        }
+
+        .square-avatar-fill {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            transform: scale(1.22);
+            filter: blur(8px) saturate(1.08);
+            opacity: 0.58;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .square-avatar-photo {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: inherit;
+            display: block;
+            transform: scale(1.08);
+            transform-origin: center;
         }
 
         .search-result-info {
@@ -4363,6 +4389,155 @@
         .swipe-dot.active {
             width: 18px;
             background: #580005;
+        }
+
+        .global-alert-host {
+            position: relative;
+            z-index: 240;
+            margin: 2px 0 2px;
+        }
+
+        .global-alert-pill {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 54px;
+            width: 100%;
+            padding: 10px 16px 10px 52px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06));
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(18px) saturate(1.18);
+            -webkit-backdrop-filter: blur(18px) saturate(1.18);
+            color: #f5f8ff;
+            cursor: pointer;
+            transition: transform 0.26s ease, opacity 0.2s ease, border-color 0.2s ease;
+            overflow: hidden;
+        }
+
+        .global-alert-pill:hover {
+            transform: translateY(-1px);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .global-alert-pill-title {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .global-alert-pill-close {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(12, 14, 20, 0.44);
+            color: #fff;
+            font-size: 18px;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .global-alert-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1100;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            background: rgba(5, 6, 9, 0.26);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            transition: opacity 0.34s ease, visibility 0.34s ease;
+        }
+
+        .global-alert-sheet {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(165deg, rgba(22, 25, 33, 0.82), rgba(12, 14, 19, 0.88));
+            backdrop-filter: blur(28px) saturate(1.2);
+            -webkit-backdrop-filter: blur(28px) saturate(1.2);
+            color: #f4f7ff;
+            padding: calc(max(18px, env(safe-area-inset-top)) + 12px) max(18px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+            transform: scale(0.94);
+            opacity: 0;
+            transition: transform 0.36s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.28s ease;
+            overflow-y: auto;
+        }
+
+        .global-alert-sheet-close {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.09);
+            color: #fff;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .global-alert-sheet-title {
+            font-size: clamp(26px, 5vw, 38px);
+            line-height: 1.08;
+            font-weight: 780;
+            margin: 0 0 14px;
+            color: #ffffff;
+            letter-spacing: 0.2px;
+            text-wrap: balance;
+        }
+
+        .global-alert-sheet-text {
+            font-size: clamp(16px, 2.6vw, 19px);
+            line-height: 1.62;
+            color: rgba(244, 247, 255, 0.94);
+            max-width: 900px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .global-alert-host.expanded .global-alert-overlay {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .global-alert-host.expanded .global-alert-sheet {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .global-alert-host.expanded .global-alert-pill {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+            pointer-events: none;
+        }
+
+        .global-alert-host.dismissing .global-alert-pill {
+            opacity: 0;
+            transform: scale(0.94);
+            pointer-events: none;
+        }
+
+        body.announcement-expanded {
+            overflow: hidden;
         }
 
         .profile {
@@ -6029,6 +6204,7 @@
         overflow: hidden;
         flex-shrink: 0;
         transition: all 0.3s ease;
+        isolation: isolate;
     }
 
     .chat-avatar:hover {
@@ -19034,6 +19210,7 @@ html.android-device .message-input:empty::before {
     const installSecureApiFetch = () => {
         if (window.__tobebeSecureFetchInstalled) return;
         const originalFetch = window.fetch.bind(window);
+        const trustedApiOrigins = new Set([window.location.origin, 'https://tobebe.online']);
         window.fetch = (input, init) => {
             const isRequestObject = typeof Request !== 'undefined' && input instanceof Request;
             const requestUrl = typeof input === 'string' ? input : ((input && input.url) ? input.url : '');
@@ -19041,19 +19218,17 @@ html.android-device .message-input:empty::before {
             const nextInit = init ? { ...init } : {};
             try {
                 const url = new URL(requestUrl, window.location.origin);
-                const isApi = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
-                if (isApi) {
+                const isApiPath = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
+                if (isApiPath) {
+                    const isTrustedApiOrigin = trustedApiOrigins.has(url.origin);
                     url.searchParams.delete('user_id');
                     nextInput = url.toString();
                     const headers = new Headers((nextInit.headers || (isRequestObject ? input.headers : undefined)) || {});
-                    const sessionToken = (localStorage.getItem('tobebe_session_token') || '').trim();
-                    if (sessionToken) {
-                        headers.set('Authorization', `Bearer ${sessionToken}`);
-                    } else if (headers.has('Authorization')) {
+                    if (!isTrustedApiOrigin && headers.has('Authorization')) {
                         headers.delete('Authorization');
                     }
                     if (nextInit.credentials === undefined) {
-                        nextInit.credentials = 'include';
+                        nextInit.credentials = isTrustedApiOrigin ? 'include' : 'omit';
                     }
                     const body = nextInit.body;
                     if (body instanceof FormData) {
@@ -19208,6 +19383,12 @@ html.android-device .message-input:empty::before {
             this.searchActive = false;
             this.recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || [];
             this.searchSessionToken = 0;
+            this.activeAnnouncement = null;
+            this.announcementExpanded = false;
+            this.announcementExpireTimer = null;
+            this.announcementPollInterval = null;
+            this.announcementLoading = false;
+            this.announcementDismissedId = Number(localStorage.getItem('tobebe_announcement_dismissed_id') || '0') || 0;
             
             this.pinnedChats = JSON.parse(localStorage.getItem('pinnedChats')) || [];
             this.activeChats = JSON.parse(localStorage.getItem('activeChats')) || [];
@@ -19481,6 +19662,7 @@ html.android-device .message-input:empty::before {
             this.secretPfsRotationMs = 1000 * 60 * 60 * 12;
             this.secretPfsMaxKeyringSize = 8;
             this.secretStoragePassphrase = null;
+            this.secretStorageQuotaNoticeShown = false;
             this.secretKeyringLocked = false;
             this.secretKeyringLockNoticeShown = false;
             this.secretPassphraseDialogResolver = null;
@@ -20147,7 +20329,14 @@ html.android-device .message-input:empty::before {
             const visualViewport = window.visualViewport;
             const viewportHeight = visualViewport ? visualViewport.height : window.innerHeight;
             const viewportTop = this.isIOSDevice ? 0 : (visualViewport ? visualViewport.offsetTop : 0);
-            document.documentElement.style.setProperty('--app-mobile-vh', `${Math.round(viewportHeight)}px`);
+            const effectiveViewportHeight = (this.isIOSDevice && !hasFocusedComposer)
+                ? Math.max(
+                    window.innerHeight || 0,
+                    viewportHeight || 0,
+                    this.keyboardViewportBaseHeight || 0
+                )
+                : viewportHeight;
+            document.documentElement.style.setProperty('--app-mobile-vh', `${Math.round(effectiveViewportHeight)}px`);
             document.documentElement.style.setProperty('--app-mobile-offset-top', `${Math.round(viewportTop)}px`);
             if (this.isIOSDevice && !hasFocusedComposer && Date.now() < (this.keyboardUnlockGuardUntil || 0)) {
                 this.keyboardVisibleState = false;
@@ -20287,8 +20476,8 @@ html.android-device .message-input:empty::before {
                     const partnerKeyId = this.getCurrentSecretChatPartnerKeyId(secretChat) || '';
                     if (keySource) {
                         const keyFingerprint = this.toBase64Utf8(keySource).slice(0, 42);
-                        localStorage.setItem(`secret_profile_key_${userId}`, keyFingerprint);
-                        localStorage.setItem(`secret_profile_key_id_${userId}`, String(partnerKeyId || 'legacy'));
+                        this.safeLocalStorageSetItem(`secret_profile_key_${userId}`, keyFingerprint, { keepPartnerId: userId, silent: true });
+                        this.safeLocalStorageSetItem(`secret_profile_key_id_${userId}`, String(partnerKeyId || 'legacy'), { keepPartnerId: userId, silent: true });
                         parts.push('secret_chat=1');
                     }
                 }
@@ -20886,8 +21075,22 @@ html.android-device .message-input:empty::before {
                     chatsList.addEventListener('pointerdown', (e) => {
                         const item = e.target.closest('.search-result-item');
                         searchResultPointerDown = !!item;
-                        if (item) e.preventDefault();
+                    }, { passive: true });
+                    chatsList.addEventListener('touchstart', (e) => {
+                        const item = e.target.closest('.search-result-item');
+                        if (item) searchResultPointerDown = true;
                     }, { passive: false });
+                    chatsList.addEventListener('pointerup', (e) => {
+                        if (e.pointerType && e.pointerType !== 'touch') return;
+                        const item = e.target.closest('.search-result-item');
+                        if (!item) return;
+                        const id = item.dataset.searchId;
+                        const mode = item.dataset.searchMode || 'normal';
+                        if (!id) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.selectSearchResult(id, mode);
+                    });
                     chatsList.addEventListener('click', (e) => {
                         const item = e.target.closest('.search-result-item');
                         if (!item) return;
@@ -20917,24 +21120,50 @@ html.android-device .message-input:empty::before {
             if (this.recentSearches.length === 0) {
                 chatsList.innerHTML = this.renderSearchInlineEmpty('Введите минимум 2 символа', 'Результаты появятся здесь вместо списка чатов');
             } else {
-                chatsList.innerHTML = this.recentSearches.map(user => `
-                    <div class="search-result-item" data-search-id="${String(user.id)}" data-search-mode="${user.chat_mode || 'normal'}">
-                        <div class="search-result-avatar">
-                            ${user.avatar ? 
-                                `<img src="${user.avatar}">` : 
-                                `<span>${(user.display_name || user.username).charAt(0)}</span>`
-                            }
-                        </div>
-                        <div class="search-result-info">
-                            <div class="search-result-name">
-                                ${user.display_name || user.username}
-                                ${this.getEmojiHtml(user)}
-                            </div>
-                            <div class="search-result-username">@${user.username}</div>
-                        </div>
-                    </div>
-                `).join('');
+                chatsList.innerHTML = this.recentSearches.map(user => this.renderSearchResultItem(user)).join('');
             }
+        }
+
+        renderSearchResultItem(user) {
+            const modeRaw = String(user?.chat_mode || 'normal');
+            const mode = ['normal', 'group', 'channel', 'secret'].includes(modeRaw) ? modeRaw : 'normal';
+            const id = this.escapeHtml(String(user?.id ?? ''));
+            const displayNameRaw = String(user?.display_name || user?.name || user?.username || 'Пользователь');
+            const usernameRaw = String(user?.username || '');
+            const displayName = this.escapeHtml(displayNameRaw);
+            const username = this.escapeHtml(usernameRaw);
+            const firstLetter = this.escapeHtml(displayNameRaw.charAt(0).toUpperCase() || '?');
+            const avatarUrl = this.normalizeSafeHttpUrl(user?.avatar || '');
+            const avatarHtml = avatarUrl
+                ? `<span class="square-avatar-fill" style="background-image:url('${this.escapeHtml(avatarUrl)}')"></span><img src="${this.escapeHtml(avatarUrl)}" class="square-avatar-photo">`
+                : `<span>${firstLetter}</span>`;
+            const isChannel = Boolean(user?.is_channel);
+            const isGroup = Boolean(user?.is_group);
+            const membersCount = Math.max(0, Number(user?.members_count) || 0);
+            const subtitle = isChannel
+                ? 'Канал'
+                : (isGroup ? 'Группа' : `@${username}`);
+            const online = isChannel
+                ? `<div class="search-result-online">${membersCount} ${this.getRussianWord(membersCount, ['подписчик', 'подписчика', 'подписчиков'])}</div>`
+                : (isGroup
+                    ? `<div class="search-result-online">${membersCount} ${this.getRussianWord(membersCount, ['участник', 'участника', 'участников'])}</div>`
+                    : (user?.is_online ? '<div class="search-result-online">в сети</div>' : ''));
+            const emojiHtml = (isChannel || isGroup) ? '' : this.getEmojiHtml(user);
+            return `
+                <div class="search-result-item" data-search-id="${id}" data-search-mode="${this.escapeHtml(mode)}">
+                    <div class="search-result-avatar">
+                        ${avatarHtml}
+                    </div>
+                    <div class="search-result-info">
+                        <div class="search-result-name">
+                            ${displayName}
+                            ${emojiHtml}
+                        </div>
+                        <div class="search-result-username">${subtitle}</div>
+                        ${online}
+                    </div>
+                </div>
+            `;
         }
 
         renderSearchInlineEmpty(title, subtitle) {
@@ -21019,27 +21248,7 @@ html.android-device .message-input:empty::before {
                 const results = [...groupResults, ...channelResults, ...userResults];
 
                 if (results.length > 0) {
-                    chatsList.innerHTML = results.map(user => `
-                        <div class="search-result-item" data-search-id="${String(user.id)}" data-search-mode="${user.chat_mode || 'normal'}">
-                            <div class="search-result-avatar">
-                                ${user.avatar ? 
-                                    `<img src="${user.avatar}">` : 
-                                    `<span>${(user.display_name || user.username).charAt(0)}</span>`
-                                }
-                            </div>
-                            <div class="search-result-info">
-                                <div class="search-result-name">
-                                    ${user.display_name || user.username}
-                                    ${this.getEmojiHtml(user)}
-                                </div>
-                                <div class="search-result-username">${user.is_channel ? 'Канал' : (user.is_group ? 'Группа' : '@' + user.username)}</div>
-                                ${user.is_channel
-                                    ? `<div class="search-result-online">${user.members_count} ${this.getRussianWord(user.members_count, ['подписчик', 'подписчика', 'подписчиков'])}</div>`
-                                    : (user.is_group ? `<div class="search-result-online">${user.members_count} ${this.getRussianWord(user.members_count, ['участник', 'участника', 'участников'])}</div>` : (user.is_online ? '<div class="search-result-online">в сети</div>' : ''))
-                                }
-                            </div>
-                        </div>
-                    `).join('');
+                    chatsList.innerHTML = results.map(user => this.renderSearchResultItem(user)).join('');
                     
                 } else {
                     chatsList.innerHTML = this.renderSearchInlineEmpty('Пользователи не найдены', 'Попробуйте другой запрос');
@@ -23773,7 +23982,7 @@ html.android-device .message-input:empty::before {
                 return;
             }
             const albumEnabled = filesToSend.length > 1 && filesToSend.every(file => file.type.startsWith('image/'));
-            const albumId = albumEnabled ? `alb_${Date.now()}_${Math.random().toString(36).slice(2, 9)}` : null;
+            const albumId = albumEnabled ? `alb_${Date.now()}_${this.getSecureRandomString(7)}` : null;
             const ttlMeta = this.getCurrentMediaTtlMeta();
             this.closeMediaEditor();
             this.startOutgoingActivity('media_uploading', 1400);
@@ -24056,6 +24265,74 @@ html.android-device .message-input:empty::before {
             return normalized;
         }
 
+        isStorageQuotaExceeded(error) {
+            if (!error) return false;
+            if (error.name === 'QuotaExceededError') return true;
+            if (error.code === 22 || error.code === 1014) return true;
+            return /quota/i.test(String(error.message || ''));
+        }
+
+        clearLocalStorageForSecretRetry(keepPartnerId = null) {
+            const keepPartner = keepPartnerId != null ? String(keepPartnerId) : '';
+            const loadedMediaKey = this.getLoadedMediaStorageKey();
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = String(localStorage.key(i) || '');
+                if (!key) continue;
+                if (key === loadedMediaKey || key.startsWith('tobebe_channel_messages_')) {
+                    keysToRemove.push(key);
+                    continue;
+                }
+                if (key.startsWith('secret_safety_number_') || key.startsWith('secret_profile_key_') || key.startsWith('secret_profile_key_id_')) {
+                    if (keepPartner && key.endsWith(`_${keepPartner}`)) continue;
+                    keysToRemove.push(key);
+                }
+            }
+            for (const key of keysToRemove) {
+                try {
+                    localStorage.removeItem(key);
+                } catch (_) {}
+            }
+            return keysToRemove.length > 0;
+        }
+
+        safeLocalStorageSetItem(key, value, opts = {}) {
+            const normalizedKey = String(key || '');
+            if (!normalizedKey) return false;
+            const normalizedValue = value == null ? '' : String(value);
+            try {
+                localStorage.setItem(normalizedKey, normalizedValue);
+                return true;
+            } catch (error) {
+                if (!this.isStorageQuotaExceeded(error)) return false;
+            }
+            this.clearLocalStorageForSecretRetry(opts.keepPartnerId);
+            try {
+                localStorage.setItem(normalizedKey, normalizedValue);
+                return true;
+            } catch (error) {
+                if (this.isStorageQuotaExceeded(error) && !opts.silent && !this.secretStorageQuotaNoticeShown) {
+                    this.secretStorageQuotaNoticeShown = true;
+                    this.showToast('Память браузера переполнена. Очистите данные сайта для стабильной работы секретных чатов');
+                }
+                return false;
+            }
+        }
+
+        persistSecretSafetySnapshot(partnerId, data, opts = {}) {
+            const id = String(partnerId || '');
+            if (!id || !data) return false;
+            const safetyRaw = String(data.safety_number || '');
+            const keepPartnerId = opts.keepPartnerId != null ? opts.keepPartnerId : id;
+            const okSafety = this.safeLocalStorageSetItem(`secret_safety_number_${id}`, safetyRaw, { keepPartnerId, silent: true });
+            let okFingerprint = true;
+            if (data.partner_fingerprint) {
+                okFingerprint = this.safeLocalStorageSetItem(`secret_profile_key_${id}`, String(data.partner_fingerprint), { keepPartnerId, silent: true });
+            }
+            const okKeyId = this.safeLocalStorageSetItem(`secret_profile_key_id_${id}`, String(data.partner_key_id || 'legacy'), { keepPartnerId, silent: true });
+            return Boolean(okSafety && okFingerprint && okKeyId);
+        }
+
         bytesToBase64(bytes) {
             const input = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
             let binary = '';
@@ -24172,20 +24449,25 @@ html.android-device .message-input:empty::before {
         async saveSecretKeyringToStorage() {
             const normalized = this.normalizeSecretKeyring(this.secretKeyring || []);
             this.secretKeyring = normalized;
-            localStorage.setItem('tobebe_secret_active_key_id', this.secretActiveKeyId || '');
+            this.safeLocalStorageSetItem('tobebe_secret_active_key_id', this.secretActiveKeyId || '', { silent: true });
             const passphrase = await this.getSecretStoragePassphrase(true);
             if (!passphrase) {
                 this.secretKeyringLocked = true;
                 this.showToast('Ключи не сохранены: нужен мастер-пароль');
-                return;
+                return false;
             }
             const payload = await this.encryptSecretKeyringPayload(normalized, passphrase);
-            localStorage.setItem('tobebe_secret_keyring_secure_v2', JSON.stringify(payload));
+            const saved = this.safeLocalStorageSetItem('tobebe_secret_keyring_secure_v2', JSON.stringify(payload));
+            if (!saved) {
+                this.secretKeyringLocked = false;
+                return false;
+            }
             localStorage.removeItem('tobebe_secret_keyring_v1');
+            return true;
         }
 
         generateSecretKeyId() {
-            const randomPart = Math.random().toString(36).slice(2, 11);
+            const randomPart = this.getSecureRandomString(9);
             return `k_${Date.now().toString(36)}_${randomPart}`;
         }
 
@@ -24366,6 +24648,10 @@ html.android-device .message-input:empty::before {
             if (!this.currentUser?.id) return;
             try {
                 const res = await fetch(`${this.apiUrl}?action=get_secret_chats`);
+                if (!res.ok) {
+                    this.secretChats = [];
+                    return;
+                }
                 const data = await res.json();
                 if (data.success) {
                     this.secretChats = data.chats || [];
@@ -24384,8 +24670,12 @@ html.android-device .message-input:empty::before {
                         } catch (e) {}
                     }
                     this.updateUsersList();
+                } else {
+                    this.secretChats = [];
                 }
-            } catch (e) {}
+            } catch (e) {
+                this.secretChats = [];
+            }
         }
 
         getPartnerSecretPublicKey(userId) {
@@ -24420,11 +24710,7 @@ html.android-device .message-input:empty::before {
             if (prev && current && prev !== current) {
                 this.showToast('Safety Number изменился. Проверьте ключи');
             }
-            localStorage.setItem(storageKey, current);
-            if (data.partner_fingerprint) {
-                localStorage.setItem(`secret_profile_key_${partnerId}`, String(data.partner_fingerprint));
-            }
-            localStorage.setItem(`secret_profile_key_id_${partnerId}`, String(data.partner_key_id || 'legacy'));
+            this.persistSecretSafetySnapshot(partnerId, data, { keepPartnerId: partnerId });
         }
 
         async openSecretSafetyNumbers() {
@@ -24444,11 +24730,7 @@ html.android-device .message-input:empty::before {
                 return;
             }
             const safetyRaw = String(data.safety_number || '');
-            localStorage.setItem(`secret_safety_number_${partnerId}`, safetyRaw);
-            if (data.partner_fingerprint) {
-                localStorage.setItem(`secret_profile_key_${partnerId}`, String(data.partner_fingerprint));
-            }
-            localStorage.setItem(`secret_profile_key_id_${partnerId}`, String(data.partner_key_id || 'legacy'));
+            this.persistSecretSafetySnapshot(partnerId, data, { keepPartnerId: partnerId });
             const safetyFormatted = this.escapeHtml(String(data.safety_number_formatted || safetyRaw));
             const myKeyId = this.escapeHtml(String(data.my_key_id || 'legacy'));
             const partnerKeyId = this.escapeHtml(String(data.partner_key_id || 'legacy'));
@@ -25135,7 +25417,7 @@ html.android-device .message-input:empty::before {
                         </div>
                         <div class="chat-item ${isActive ? 'active' : ''} ${isPinned ? 'pinned' : ''} ${isSecret ? 'secret-item' : ''}" data-user-id="${user.id}" data-chat-mode="${userMode}" oncontextmenu="app.showChatContextMenu(event, '${String(user.id)}', '${userMode}', '${String(pinKey)}')">
                             <div class="chat-avatar ${!isGroup && user.is_online && this.privacySettings.onlineStatus && !isBlocked && !isBlockedBy ? 'online' : ''}">
-                                ${user.avatar ? `<img src="${user.avatar}" class="avatar-image">` : `<span>${user.display_name?.charAt(0) || user.username.charAt(0)}</span>`}
+                                ${user.avatar ? `<span class="square-avatar-fill" style="background-image:url('${user.avatar}')"></span><img src="${user.avatar}" class="avatar-image square-avatar-photo">` : `<span>${user.display_name?.charAt(0) || user.username.charAt(0)}</span>`}
                             </div>
                             <div class="chat-details">
                                 <div class="chat-row">
@@ -25730,7 +26012,7 @@ html.android-device .message-input:empty::before {
             }
 
             
-            const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+            const tempId = 'temp_' + Date.now() + '_' + this.getSecureRandomString(13);
             
             
             const timeSec = Math.floor(Date.now() / 1000);
@@ -25956,7 +26238,7 @@ html.android-device .message-input:empty::before {
             const composedForwardText = includeCaption
                 ? (sourceText ? `${normalizedComment}\n\n${sourceText}` : normalizedComment)
                 : sourceText;
-            const tempId = 'temp_fwd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+            const tempId = 'temp_fwd_' + Date.now() + '_' + this.getSecureRandomString(8);
             const tempMessage = {
                 id: tempId,
                 sender_id: this.currentUser.id,
@@ -26445,7 +26727,7 @@ html.android-device .message-input:empty::before {
 
         appendUploadingMediaMessage(file, options = {}) {
             if (!this.selectedUser || !file) return null;
-            const tempId = `temp_upload_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            const tempId = `temp_upload_${Date.now()}_${this.getSecureRandomString(6)}`;
             const fileType = file.type || 'application/octet-stream';
             const url = URL.createObjectURL(file);
             const mediaMeta = {
@@ -28660,6 +28942,11 @@ html.android-device .message-input:empty::before {
             
             if (this.currentUser) {
                 app.innerHTML = this.renderMessenger();
+                if (!this.shouldRenderAnnouncement()) {
+                    this.setAnnouncementExpanded(false);
+                } else {
+                    document.body.classList.toggle('announcement-expanded', this.announcementExpanded);
+                }
                 this.ensureDesktopInteractionState();
                 this.loadUsers();
                 
@@ -28722,6 +29009,7 @@ html.android-device .message-input:empty::before {
                     
                 }, 300);
             } else {
+                this.setAnnouncementExpanded(false);
                 app.innerHTML = this.renderAuth();
                 
                 setTimeout(() => {
@@ -29561,7 +29849,7 @@ html.android-device .message-input:empty::before {
                 this.composerEmojiItems = data.emojis.map((item) => {
                     const titleRaw = String(item.emoji_title || item.title || item.name || 'Эмодзи').trim();
                     return {
-                        id: Number(item.id) || Math.floor(Math.random() * 1000000),
+                        id: Number(item.id) || this.getSecureRandomInt(1000000),
                         path: this.normalizeChatEmojiPath(item.path || item.emoji_path || ''),
                         title: titleRaw.slice(0, 48) || 'Эмодзи',
                         file_type: String(item.file_type || '')
@@ -29679,7 +29967,7 @@ html.android-device .message-input:empty::before {
                     return;
                 }
                 const item = {
-                    id: Number(data.emoji.id) || Math.floor(Math.random() * 1000000),
+                    id: Number(data.emoji.id) || this.getSecureRandomInt(1000000),
                     path: this.normalizeChatEmojiPath(data.emoji.path),
                     title: String(data.emoji.emoji_title || trimmedTitle).slice(0, 48),
                     file_type: String(data.emoji.file_type || '')
@@ -30000,6 +30288,131 @@ html.android-device .message-input:empty::before {
             this.updateMessages(true);
         }
 
+        normalizeAnnouncementPayload(raw) {
+            if (!raw || typeof raw !== 'object') return null;
+            const id = Number(raw.id) || 0;
+            const title = String(raw.title || '').trim();
+            const headline = String(raw.headline || '').trim();
+            const body = String(raw.body || '').trim();
+            if (!id || title.length < 1 || headline.length < 1 || body.length < 1) return null;
+            const expiresAt = raw.expires_at ? String(raw.expires_at) : null;
+            return { id, title, headline, body, expires_at: expiresAt };
+        }
+
+        shouldRenderAnnouncement() {
+            if (!this.activeAnnouncement) return false;
+            return Number(this.activeAnnouncement.id) !== Number(this.announcementDismissedId || 0);
+        }
+
+        renderGlobalAnnouncement() {
+            if (!this.shouldRenderAnnouncement()) return '';
+            const item = this.activeAnnouncement;
+            const hostClass = this.announcementExpanded ? 'global-alert-host expanded' : 'global-alert-host';
+            const escapedTitle = this.escapeHtml(item.title);
+            const escapedHeadline = this.escapeHtml(item.headline);
+            const escapedBody = this.escapeHtml(item.body);
+            return `
+                <div class="${hostClass}" id="globalAnnouncementHost" data-announcement-id="${item.id}">
+                    <div class="global-alert-pill" id="globalAnnouncementPill" role="button" tabindex="0" aria-label="Открыть оповещение">
+                        <button class="global-alert-pill-close" id="globalAnnouncementDismiss" aria-label="Скрыть оповещение">×</button>
+                        <div class="global-alert-pill-title">${escapedTitle}</div>
+                    </div>
+                    <div class="global-alert-overlay" id="globalAnnouncementOverlay">
+                        <div class="global-alert-sheet">
+                            <button class="global-alert-sheet-close" id="globalAnnouncementClose" aria-label="Закрыть оповещение">×</button>
+                            <h2 class="global-alert-sheet-title">${escapedHeadline}</h2>
+                            <div class="global-alert-sheet-text">${escapedBody}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        setAnnouncementExpanded(expanded) {
+            this.announcementExpanded = !!expanded;
+            const host = document.getElementById('globalAnnouncementHost');
+            host?.classList.toggle('expanded', this.announcementExpanded);
+            document.body.classList.toggle('announcement-expanded', this.announcementExpanded);
+        }
+
+        dismissAnnouncementCard() {
+            const item = this.activeAnnouncement;
+            if (!item) return;
+            const host = document.getElementById('globalAnnouncementHost');
+            if (!host) return;
+            host.classList.add('dismissing');
+            this.setAnnouncementExpanded(false);
+            setTimeout(() => {
+                this.announcementDismissedId = Number(item.id) || 0;
+                localStorage.setItem('tobebe_announcement_dismissed_id', String(this.announcementDismissedId));
+                this.render();
+            }, 220);
+        }
+
+        setupAnnouncementExpiryTimer() {
+            if (this.announcementExpireTimer) {
+                clearTimeout(this.announcementExpireTimer);
+                this.announcementExpireTimer = null;
+            }
+            const expiresAt = this.activeAnnouncement?.expires_at;
+            if (!expiresAt) return;
+            const expireTs = new Date(expiresAt).getTime();
+            if (!Number.isFinite(expireTs)) return;
+            const delay = Math.max(500, expireTs - Date.now() + 500);
+            this.announcementExpireTimer = setTimeout(() => {
+                this.loadActiveAnnouncement(true);
+            }, Math.min(delay, 2147483647));
+        }
+
+        async loadActiveAnnouncement(silent = false) {
+            if (!this.currentUser || this.announcementLoading) return;
+            this.announcementLoading = true;
+            try {
+                const res = await fetch(`${this.apiUrl}?action=get_active_announcement`, { cache: 'no-store' });
+                const data = await res.json();
+                if (!data?.success) return;
+
+                const normalized = this.normalizeAnnouncementPayload(data.announcement);
+                const prevId = Number(this.activeAnnouncement?.id || 0);
+                const nextId = Number(normalized?.id || 0);
+
+                if (!normalized) {
+                    this.activeAnnouncement = null;
+                    this.setAnnouncementExpanded(false);
+                    this.setupAnnouncementExpiryTimer();
+                    if (!silent && prevId !== 0) this.render();
+                    if (silent && prevId !== 0) this.render();
+                    return;
+                }
+
+                this.activeAnnouncement = normalized;
+                if (nextId !== prevId) {
+                    this.announcementExpanded = false;
+                    if (nextId !== Number(this.announcementDismissedId || 0)) {
+                        localStorage.removeItem('tobebe_announcement_dismissed_id');
+                        this.announcementDismissedId = 0;
+                    }
+                    this.render();
+                } else if (!silent) {
+                    this.render();
+                }
+                this.setupAnnouncementExpiryTimer();
+            } catch (_) {
+            } finally {
+                this.announcementLoading = false;
+            }
+        }
+
+        startAnnouncementPolling() {
+            if (this.announcementPollInterval) {
+                clearInterval(this.announcementPollInterval);
+            }
+            this.loadActiveAnnouncement(true);
+            this.announcementPollInterval = setInterval(() => {
+                this.loadActiveAnnouncement(true);
+            }, 30000);
+        }
+
         renderMessenger() {
             const isBlocked = this.selectedUser && this.selectedUser.id !== 'favorite' && this.blockedUsers.includes(this.selectedUser.id);
             const isBlockedBy = this.selectedUser && this.selectedUser.id !== 'favorite' && this.blockedByUsers.includes(this.selectedUser.id);
@@ -30046,6 +30459,7 @@ html.android-device .message-input:empty::before {
                                 </div>
                             </div>
                             ${this.renderChatFoldersBar()}
+                            ${this.renderGlobalAnnouncement()}
                             
                             <div class="profile-swipe-container">
                                 <div class="profile-swipe-track">
@@ -31042,7 +31456,7 @@ html.android-device .message-input:empty::before {
         }
 
         buildPrivateChannelLinkPreview() {
-            const token = this.pendingChannelInviteToken || Math.random().toString(36).slice(2, 10);
+            const token = this.pendingChannelInviteToken || this.getSecureRandomString(8);
             this.pendingChannelInviteToken = token;
             return `https://tobebe.online/to.be.html?channel_token=${encodeURIComponent(token)}`;
         }
@@ -32745,6 +33159,33 @@ html.android-device .message-input:empty::before {
                 .replace(/'/g, '&#39;');
         }
 
+        getSecureRandomInt(maxExclusive) {
+            const max = Number(maxExclusive);
+            if (!Number.isFinite(max) || max <= 0) return 0;
+            const cryptoObj = window.crypto || window.msCrypto;
+            if (!cryptoObj || typeof cryptoObj.getRandomValues !== 'function') {
+                return Math.floor(Math.random() * max);
+            }
+            const uint32Limit = 0x100000000;
+            const safeLimit = Math.floor(uint32Limit / max) * max;
+            const buffer = new Uint32Array(1);
+            do {
+                cryptoObj.getRandomValues(buffer);
+            } while (buffer[0] >= safeLimit);
+            return buffer[0] % max;
+        }
+
+        getSecureRandomString(length = 12, alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789') {
+            const targetLength = Math.max(1, Number(length) || 1);
+            const chars = String(alphabet || 'abcdefghijklmnopqrstuvwxyz0123456789');
+            if (chars.length <= 1) return chars || 'a';
+            let result = '';
+            for (let i = 0; i < targetLength; i += 1) {
+                result += chars[this.getSecureRandomInt(chars.length)];
+            }
+            return result;
+        }
+
         normalizeSafeHttpUrl(value) {
             const raw = String(value || '').trim();
             if (!raw) return null;
@@ -32959,10 +33400,11 @@ html.android-device .message-input:empty::before {
 
         renderForwardedFrom(forwardedFrom, senderEmoji) {
             const sender = this.users.find(u => u.id === forwardedFrom);
-            const name = sender ? (sender.display_name || sender.username) : 'Неизвестный';
+            const name = this.escapeHtml(sender ? (sender.display_name || sender.username) : 'Неизвестный');
+            const safeForwardedFrom = Number(forwardedFrom) || 0;
             
             return `
-                <div class="forwarded-label" onclick="app.openUserProfile(${forwardedFrom})">
+                <div class="forwarded-label" onclick="app.openUserProfile(${safeForwardedFrom})">
                     <svg class="icon-sm"><use xlink:href="#icon-forward"/></svg>
                     ${senderEmoji}
                     Переслано от ${name}
@@ -32971,20 +33413,22 @@ html.android-device .message-input:empty::before {
         }
 
         renderReplyPreview(senderId, replyText, replyId) {
-            const sender = senderId === this.currentUser.id ? 'вас' : (this.selectedUser?.display_name || this.selectedUser?.username);
-            const text = replyText || '📎 Медиа';
+            const senderRaw = senderId === this.currentUser.id ? 'вас' : (this.selectedUser?.display_name || this.selectedUser?.username || 'пользователя');
+            const sender = this.escapeHtml(senderRaw);
+            const text = this.escapeHtml(replyText || '📎 Медиа');
+            const safeReplyId = Number(replyId) || 0;
             
             let senderEmoji = '';
             if (senderId !== this.currentUser.id && senderId === this.selectedUser?.id) {
                 if (this.selectedUser?.profile_emoji) {
-                    senderEmoji = `<img src="${this.selectedUser.profile_emoji}" class="profile-emoji-image" alt="emoji">`;
+                    senderEmoji = `<img src="${this.escapeHtml(this.selectedUser.profile_emoji)}" class="profile-emoji-image" alt="emoji">`;
                 }
             } else if (senderId === this.currentUser.id && this.currentUser.profile_emoji) {
-                senderEmoji = `<img src="${this.currentUser.profile_emoji}" class="profile-emoji-image" alt="emoji">`;
+                senderEmoji = `<img src="${this.escapeHtml(this.currentUser.profile_emoji)}" class="profile-emoji-image" alt="emoji">`;
             }
             
             return `
-                <div class="reply-preview" onclick="app.jumpToMessage(${replyId})">
+                <div class="reply-preview" onclick="app.jumpToMessage(${safeReplyId})">
                     <div class="reply-preview-sender">
                         ↩ Ответ ${sender} ${senderEmoji}
                     </div>
@@ -35194,8 +35638,12 @@ html.android-device .message-input:empty::before {
                 if (this.statusInterval) clearInterval(this.statusInterval);
                 if (this.pingInterval) clearInterval(this.pingInterval);
                 if (this.typingCheckInterval) clearInterval(this.typingCheckInterval);
+                if (this.announcementPollInterval) clearInterval(this.announcementPollInterval);
+                if (this.announcementExpireTimer) clearTimeout(this.announcementExpireTimer);
             }
             this.currentUser = null;
+            this.activeAnnouncement = null;
+            this.announcementExpanded = false;
             this.selectedUser = null;
             this.users = [];
             this.messages = [];
@@ -36545,6 +36993,15 @@ html.android-device .message-input:empty::before {
             }
             this.restoreSessionFromCookie().then(async (hasSession) => {
                 if (!this.currentUser && !hasSession) {
+                    if (this.announcementPollInterval) {
+                        clearInterval(this.announcementPollInterval);
+                        this.announcementPollInterval = null;
+                    }
+                    if (this.announcementExpireTimer) {
+                        clearTimeout(this.announcementExpireTimer);
+                        this.announcementExpireTimer = null;
+                    }
+                    this.activeAnnouncement = null;
                     return;
                 }
                 this.ensureLocalStateOwner();
@@ -36557,6 +37014,7 @@ html.android-device .message-input:empty::before {
                 this.loadGroups();
                 this.loadChannels(false);
                 this.startPing();
+                this.startAnnouncementPolling();
                 this.ensureSecretSetup();
                 
                 setTimeout(() => {
@@ -36584,9 +37042,6 @@ html.android-device .message-input:empty::before {
                 const data = await res.json();
                 if (data && data.success && data.user) {
                     this.currentUser = data.user;
-                    if (data.session_token) {
-                        localStorage.setItem('tobebe_session_token', String(data.session_token));
-                    }
                     localStorage.setItem('tobebe_user', JSON.stringify(data.user));
                     this.render();
                     return true;
@@ -36876,8 +37331,37 @@ html.android-device .message-input:empty::before {
                 }
             });
 
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('#globalAnnouncementDismiss')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.dismissAnnouncementCard();
+                    return;
+                }
+                if (e.target.closest('#globalAnnouncementClose') || e.target.id === 'globalAnnouncementOverlay') {
+                    e.preventDefault();
+                    this.setAnnouncementExpanded(false);
+                    return;
+                }
+                if (e.target.closest('#globalAnnouncementPill')) {
+                    e.preventDefault();
+                    this.setAnnouncementExpanded(true);
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target?.id === 'globalAnnouncementPill') {
+                    e.preventDefault();
+                    this.setAnnouncementExpanded(true);
+                }
+            });
+
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
+                    if (this.announcementExpanded) {
+                        this.setAnnouncementExpanded(false);
+                        return;
+                    }
                     const secretPassphraseModal = document.getElementById('secretPassphraseModal');
                     if (secretPassphraseModal?.classList.contains('show') && this.secretPassphraseDialogResolver) {
                         this.secretPassphraseDialogResolver(null);
@@ -37311,12 +37795,10 @@ html.android-device .message-input:empty::before {
                             if (response.success) {
                                 if (this.registrationData.authType === 'login') {
                                     if (response.user) {
-                                        if (response.session_token) {
-                                            localStorage.setItem('tobebe_session_token', String(response.session_token));
-                                        }
                                         this.currentUser = response.user;
                                         localStorage.setItem('tobebe_user', JSON.stringify(this.currentUser));
                                         this.render();
+                                        this.startAnnouncementPolling();
                                         this.showToast(`Добро пожаловать, ${response.user.display_name || response.user.username}`);
                                         
                                         this.checkNotificationStatus();
@@ -37391,12 +37873,10 @@ html.android-device .message-input:empty::before {
                             try {
                                 const response = await this.login(this.registrationData.email, password, cloudLoginPassword);
                                 if (response.success) {
-                                    if (response.session_token) {
-                                        localStorage.setItem('tobebe_session_token', String(response.session_token));
-                                    }
                                     this.currentUser = response.user;
                                     localStorage.setItem('tobebe_user', JSON.stringify(this.currentUser));
                                     this.render();
+                                    this.startAnnouncementPolling();
                                     this.showToast(`Добро пожаловать, ${response.user.display_name || response.user.username}`);
                                     
                                     this.checkNotificationStatus();
@@ -37486,12 +37966,10 @@ html.android-device .message-input:empty::before {
                             );
                             
                             if (response.success) {
-                                if (response.session_token) {
-                                    localStorage.setItem('tobebe_session_token', String(response.session_token));
-                                }
                                 this.currentUser = response.user;
                                 localStorage.setItem('tobebe_user', JSON.stringify(this.currentUser));
                                 this.render();
+                                this.startAnnouncementPolling();
                                 this.showToast('Регистрация завершена!');
                                 
                                 this.checkNotificationStatus();
@@ -37808,7 +38286,7 @@ html.android-device .message-input:empty::before {
             const direct = await this.checkUsernameAvailability(base);
             if (direct.available) return base;
             for (let i = 0; i < 10; i += 1) {
-                const candidate = `${base}${Math.random().toString(36).replace(/[^a-z]/g, '').slice(0, 4)}`;
+                const candidate = `${base}${this.getSecureRandomString(4, 'abcdefghijklmnopqrstuvwxyz')}`;
                 const check = await this.checkUsernameAvailability(candidate);
                 if (check.available) return candidate;
             }
