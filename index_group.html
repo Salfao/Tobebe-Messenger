@@ -1717,6 +1717,7 @@
     const installSecureApiFetch = () => {
         if (window.__tobebeSecureFetchInstalled) return;
         const originalFetch = window.fetch.bind(window);
+        const trustedApiOrigins = new Set([window.location.origin, 'https://tobebe.online']);
         window.fetch = (input, init) => {
             const isRequestObject = typeof Request !== 'undefined' && input instanceof Request;
             const requestUrl = typeof input === 'string' ? input : ((input && input.url) ? input.url : '');
@@ -1724,10 +1725,12 @@
             const nextInit = init ? { ...init } : {};
             try {
                 const url = new URL(requestUrl, window.location.origin);
-                const isApi = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
-                if (isApi) {
+                const isApiPath = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
+                if (isApiPath) {
+                    const isTrustedApiOrigin = trustedApiOrigins.has(url.origin);
                     const headers = new Headers((nextInit.headers || (isRequestObject ? input.headers : undefined)) || {});
-                    if (nextInit.credentials === undefined) nextInit.credentials = 'include';
+                    if (!isTrustedApiOrigin && headers.has('Authorization')) headers.delete('Authorization');
+                    if (nextInit.credentials === undefined) nextInit.credentials = isTrustedApiOrigin ? 'include' : 'omit';
                     if (!(isRequestObject && !init)) {
                         url.searchParams.delete('user_id');
                         nextInput = url.toString();
@@ -1761,7 +1764,12 @@
         try { return JSON.parse(localStorage.getItem('tobebe_user') || 'null'); } catch { return null; }
     })();
     const groupId = new URLSearchParams(window.location.search).get('group_id') || '';
-    const escapeHtml = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const escapeHtml = (value) => String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     const getWord = (n, titles) => {
         const cases = [2, 0, 1, 1, 1, 2];
         return titles[(n % 100 > 4 && n % 100 < 20) ? 2 : cases[Math.min(n % 10, 5)]];
