@@ -967,12 +967,19 @@
             overflow: hidden;
             position: relative;
             box-shadow: 0 10px 30px -5px rgba(0,0,0,0.5);
-            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        border-radius 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        border-width 0.35s ease,
+                        border-color 0.35s ease,
+                        margin-bottom 0.35s ease,
+                        box-shadow 0.35s ease;
             transform-origin: center;
             margin-bottom: 12px;
             will-change: transform, border-radius, width, height, border-color;
             cursor: pointer;
             z-index: 2;
+            contain: paint;
         }
 
         .avatar-container.uploading {
@@ -1047,7 +1054,7 @@
         }
 
         .avatar-section.fullscreen .avatar-container img {
-            object-fit: contain;
+            object-fit: cover;
         }
 
         .avatar-section.fullscreen .avatar-story-ring {
@@ -1239,10 +1246,14 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.3s ease;
+            border-radius: inherit;
+            transition: transform 0.3s ease, border-radius 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
             pointer-events: none;
             position: relative;
             z-index: 3;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+            will-change: transform, border-radius;
         }
 
         .avatar-placeholder {
@@ -4839,6 +4850,7 @@
         const installSecureApiFetch = () => {
             if (window.__tobebeSecureFetchInstalled) return;
             const originalFetch = window.fetch.bind(window);
+            const trustedApiOrigins = new Set([window.location.origin, 'https://tobebe.online']);
             window.fetch = (input, init) => {
                 const isRequestObject = typeof Request !== 'undefined' && input instanceof Request;
                 const requestUrl = typeof input === 'string' ? input : ((input && input.url) ? input.url : '');
@@ -4846,12 +4858,12 @@
                 const nextInit = init ? { ...init } : {};
                 try {
                     const url = new URL(requestUrl, window.location.origin);
-                    const isApi = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
-                    if (isApi) {
+                    const isApiPath = /\/api\.php$/i.test(url.pathname) || /\/api\.php\?/i.test(url.href);
+                    if (isApiPath) {
+                        const isTrustedApiOrigin = trustedApiOrigins.has(url.origin);
                         const headers = new Headers((nextInit.headers || (isRequestObject ? input.headers : undefined)) || {});
-                        if (nextInit.credentials === undefined) {
-                            nextInit.credentials = 'include';
-                        }
+                        if (!isTrustedApiOrigin && headers.has('Authorization')) headers.delete('Authorization');
+                        if (nextInit.credentials === undefined) nextInit.credentials = isTrustedApiOrigin ? 'include' : 'omit';
                         if (isRequestObject && !init) {
                             nextInput = input;
                             nextInit.headers = headers;
@@ -10356,6 +10368,9 @@
             }
 
             openAvatarCropper(file) {
+                if (this.avatarCropState) {
+                    this.closeAvatarCropper();
+                }
                 const modal = document.getElementById('avatarCropperModal');
                 const image = document.getElementById('avatarCropperImage');
                 const stage = document.getElementById('avatarCropperStage');
@@ -10373,7 +10388,15 @@
                     startY: 0,
                     dragStartX: 0,
                     dragStartY: 0,
-                    dragging: false
+                    dragging: false,
+                    pinching: false,
+                    pinchStartDist: 0,
+                    pinchStartScale: 1,
+                    pinchStartCenterX: 0,
+                    pinchStartCenterY: 0,
+                    pinchStartX: 0,
+                    pinchStartY: 0,
+                    handlers: null
                 };
 
                 image.src = fileUrl;
@@ -10389,7 +10412,7 @@
                 };
 
                 const onStart = (clientX, clientY) => {
-                    if (!this.avatarCropState) return;
+                    if (!this.avatarCropState || this.avatarCropState.pinching) return;
                     this.avatarCropState.dragging = true;
                     this.avatarCropState.startX = clientX;
                     this.avatarCropState.startY = clientY;
@@ -10408,20 +10431,101 @@
                     if (this.avatarCropState) this.avatarCropState.dragging = false;
                 };
 
-                stage.onmousedown = (e) => onStart(e.clientX, e.clientY);
-                window.onmousemove = (e) => onMove(e.clientX, e.clientY);
-                window.onmouseup = () => onEnd();
+                const touchDistance = (t1, t2) => Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY) || 1;
+                const touchCenter = (t1, t2) => ({
+                    x: (t1.clientX + t2.clientX) / 2,
+                    y: (t1.clientY + t2.clientY) / 2
+                });
 
-                stage.ontouchstart = (e) => {
-                    if (e.touches[0]) onStart(e.touches[0].clientX, e.touches[0].clientY);
+                const onMouseDown = (e) => {
+                    onStart(e.clientX, e.clientY);
                 };
-                stage.ontouchmove = (e) => {
-                    if (e.touches[0]) {
+
+                const onMouseMove = (e) => {
+                    onMove(e.clientX, e.clientY);
+                };
+
+                const onMouseUp = () => {
+                    onEnd();
+                };
+
+                const onTouchStart = (e) => {
+                    if (!this.avatarCropState) return;
+                    if (e.touches.length === 2) {
+                        const [t1, t2] = e.touches;
+                        const center = touchCenter(t1, t2);
+                        this.avatarCropState.pinching = true;
+                        this.avatarCropState.dragging = false;
+                        this.avatarCropState.pinchStartDist = touchDistance(t1, t2);
+                        this.avatarCropState.pinchStartScale = this.avatarCropState.scale;
+                        this.avatarCropState.pinchStartCenterX = center.x;
+                        this.avatarCropState.pinchStartCenterY = center.y;
+                        this.avatarCropState.pinchStartX = this.avatarCropState.x;
+                        this.avatarCropState.pinchStartY = this.avatarCropState.y;
+                        e.preventDefault();
+                        return;
+                    }
+                    if (e.touches.length === 1) {
+                        onStart(e.touches[0].clientX, e.touches[0].clientY);
+                    }
+                };
+
+                const onTouchMove = (e) => {
+                    if (!this.avatarCropState) return;
+                    if (e.touches.length === 2 && this.avatarCropState.pinching) {
+                        const [t1, t2] = e.touches;
+                        const currentDist = touchDistance(t1, t2);
+                        const center = touchCenter(t1, t2);
+                        const ratio = currentDist / (this.avatarCropState.pinchStartDist || 1);
+                        const nextScale = Math.max(1, Math.min(3, this.avatarCropState.pinchStartScale * ratio));
+                        this.avatarCropState.scale = nextScale;
+                        this.avatarCropState.x = this.avatarCropState.pinchStartX + (center.x - this.avatarCropState.pinchStartCenterX);
+                        this.avatarCropState.y = this.avatarCropState.pinchStartY + (center.y - this.avatarCropState.pinchStartCenterY);
+                        zoom.value = String(nextScale);
+                        this.updateAvatarCropperTransform();
+                        e.preventDefault();
+                        return;
+                    }
+                    if (e.touches.length === 1) {
                         onMove(e.touches[0].clientX, e.touches[0].clientY);
                         e.preventDefault();
                     }
                 };
-                stage.ontouchend = () => onEnd();
+
+                const onTouchEnd = (e) => {
+                    if (!this.avatarCropState) return;
+                    if (e.touches.length < 2) {
+                        this.avatarCropState.pinching = false;
+                    }
+                    if (e.touches.length === 1) {
+                        const touch = e.touches[0];
+                        this.avatarCropState.dragging = true;
+                        this.avatarCropState.startX = touch.clientX;
+                        this.avatarCropState.startY = touch.clientY;
+                        this.avatarCropState.dragStartX = this.avatarCropState.x;
+                        this.avatarCropState.dragStartY = this.avatarCropState.y;
+                    } else if (e.touches.length === 0) {
+                        onEnd();
+                    }
+                };
+
+                const handlers = {
+                    onMouseDown,
+                    onMouseMove,
+                    onMouseUp,
+                    onTouchStart,
+                    onTouchMove,
+                    onTouchEnd
+                };
+                this.avatarCropState.handlers = handlers;
+
+                stage.addEventListener('mousedown', onMouseDown);
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+                stage.addEventListener('touchstart', onTouchStart, { passive: false });
+                stage.addEventListener('touchmove', onTouchMove, { passive: false });
+                stage.addEventListener('touchend', onTouchEnd, { passive: false });
+                stage.addEventListener('touchcancel', onTouchEnd, { passive: false });
 
                 modal.classList.add('show');
             }
@@ -10436,23 +10540,26 @@
             closeAvatarCropper() {
                 const modal = document.getElementById('avatarCropperModal');
                 const stage = document.getElementById('avatarCropperStage');
+                const handlers = this.avatarCropState?.handlers;
                 if (this.avatarCropState?.url) {
                     URL.revokeObjectURL(this.avatarCropState.url);
                 }
+                if (handlers) {
+                    stage.removeEventListener('mousedown', handlers.onMouseDown);
+                    window.removeEventListener('mousemove', handlers.onMouseMove);
+                    window.removeEventListener('mouseup', handlers.onMouseUp);
+                    stage.removeEventListener('touchstart', handlers.onTouchStart);
+                    stage.removeEventListener('touchmove', handlers.onTouchMove);
+                    stage.removeEventListener('touchend', handlers.onTouchEnd);
+                    stage.removeEventListener('touchcancel', handlers.onTouchEnd);
+                }
                 this.avatarCropState = null;
-                stage.onmousedown = null;
-                stage.ontouchstart = null;
-                stage.ontouchmove = null;
-                stage.ontouchend = null;
-                window.onmousemove = null;
-                window.onmouseup = null;
                 modal.classList.remove('show');
             }
 
             async applyAvatarCropAndUpload() {
                 if (!this.avatarCropState) return;
                 const mask = document.getElementById('avatarCropperMask');
-                const imageEl = document.getElementById('avatarCropperImage');
                 const canvas = document.createElement('canvas');
                 const size = 1024;
                 canvas.width = size;
@@ -10465,18 +10572,24 @@
                     sourceImage.onload = resolve;
                 });
 
-                const displayBase = Math.max(mask.clientWidth / sourceImage.width, mask.clientHeight / sourceImage.height);
-                const scale = displayBase * this.avatarCropState.scale;
-                const renderedWidth = sourceImage.width * scale;
-                const renderedHeight = sourceImage.height * scale;
-                const offsetX = (size - renderedWidth) / 2 + (this.avatarCropState.x / mask.clientWidth) * size;
-                const offsetY = (size - renderedHeight) / 2 + (this.avatarCropState.y / mask.clientHeight) * size;
+                const maskSize = Math.min(mask.clientWidth, mask.clientHeight);
+                const effectiveScale = (this.avatarCropState.baseScale || 1) * this.avatarCropState.scale;
+                const cropWidth = maskSize / effectiveScale;
+                const cropHeight = maskSize / effectiveScale;
+                const cropX = (sourceImage.width / 2) - (cropWidth / 2) - (this.avatarCropState.x / effectiveScale);
+                const cropY = (sourceImage.height / 2) - (cropHeight / 2) - (this.avatarCropState.y / effectiveScale);
 
-                ctx.beginPath();
-                ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-                ctx.closePath();
-                ctx.clip();
-                ctx.drawImage(sourceImage, offsetX, offsetY, renderedWidth, renderedHeight);
+                ctx.drawImage(
+                    sourceImage,
+                    cropX,
+                    cropY,
+                    cropWidth,
+                    cropHeight,
+                    0,
+                    0,
+                    size,
+                    size
+                );
 
                 const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
                 if (!blob) return;
@@ -10604,10 +10717,12 @@
             
             escapeHtml(str) {
                 if (!str) return '';
-                return str.replace(/[&<>]/g, function(m) {
+                return str.replace(/[&<>"']/g, function(m) {
                     if (m === '&') return '&amp;';
                     if (m === '<') return '&lt;';
                     if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    if (m === "'") return '&#39;';
                     return m;
                 });
             }
