@@ -1,4 +1,15 @@
 (() => {
+    const escapeHtml = (str) => {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/\//g, '&#x2F;');
+    };
+
     const resolveApiUrl = () => {
         if (typeof window === 'undefined' || !window.location) return 'https://tobebe.online/api.php';
         const protocol = window.location.protocol || '';
@@ -38,7 +49,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload || {}),
-                signal: AbortSignal.timeout(30000) 
+                signal: AbortSignal.timeout(30000)
             });
             return readJsonResponse(response);
         } catch (error) {
@@ -87,17 +98,16 @@
         card.style.cssText = 'width:min(360px,100%);background:#171a20;border:1px solid rgba(255,255,255,0.16);border-radius:18px;padding:18px;color:#fff;text-align:center;box-shadow:0 18px 40px rgba(0,0,0,0.45);';
         const typeText = call.call_type === 'video' ? 'Видеозвонок' : 'Голосовой звонок';
         
-        
-        let callerName = `Пользователь #${call.caller_id}`;
+        let callerName = `Пользователь #${escapeHtml(call.caller_id)}`;
         if (call.caller_display_name) {
-            callerName = call.caller_display_name;
+            callerName = escapeHtml(call.caller_display_name);
         } else if (call.caller_username) {
-            callerName = `@${call.caller_username}`;
+            callerName = `@${escapeHtml(call.caller_username)}`;
         }
         
         card.innerHTML = `
             <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Входящий звонок</div>
-            <div style="font-size:14px;opacity:.9;margin-bottom:4px;">${typeText}</div>
+            <div style="font-size:14px;opacity:.9;margin-bottom:4px;">${escapeHtml(typeText)}</div>
             <div style="font-size:13px;color:#b7bfd0;margin-bottom:16px;">${callerName}</div>
             <div style="display:flex;gap:10px;">
                 <button id="incomingDeclineBtn" style="flex:1;height:42px;border-radius:999px;border:1px solid rgba(255,255,255,0.2);background:#2a2e37;color:#fff;font-weight:600;cursor:pointer;transition:all 0.2s ease;">Отклонить</button>
@@ -129,7 +139,6 @@
         dismissed: new Set()
     };
 
-    
     let callAudio = null;
     const playCallSound = () => {
         try {
@@ -151,7 +160,6 @@
             
             oscillator.start();
             
-            
             let isPlaying = true;
             const interval = setInterval(() => {
                 if (!isPlaying) {
@@ -160,7 +168,6 @@
                 }
                 gainNode.gain.value = gainNode.gain.value === 0.3 ? 0 : 0.3;
             }, 500);
-            
             
             setTimeout(() => {
                 if (oscillator) {
@@ -266,7 +273,6 @@
             }
         },
         
-        
         async getCallerInfo({ apiUrl = defaultApiUrl, userId, callerId }) {
             if (!userId || !callerId) {
                 return { success: false, message: 'Недостаточно данных' };
@@ -299,11 +305,9 @@
                     const data = await window.TobebeCallsApi.pollIncoming({ apiUrl, userId });
                     const incoming = data?.incoming_call || null;
                     
-                    
                     if (incoming && incoming.expires_at) {
                         const expiresAt = new Date(incoming.expires_at);
                         if (expiresAt < new Date()) {
-                            
                             if (notifierState.showingCallId === String(incoming.id)) {
                                 document.getElementById('incomingCallOverlay')?.remove();
                                 notifierState.showingCallId = null;
@@ -329,7 +333,6 @@
                         return;
                     }
                     
-                    
                     let callerInfo = null;
                     try {
                         const callerData = await window.TobebeCallsApi.getCallerInfo({ apiUrl, userId, callerId: incoming.caller_id });
@@ -343,7 +346,6 @@
                     }
                     
                     notifierState.showingCallId = String(incoming.id);
-                    
                     
                     playCallSound();
                     
@@ -368,13 +370,12 @@
                         }
                     });
                     
-                    
                     if (document.hidden && 'Notification' in window) {
                         if (Notification.permission === 'granted') {
                             const label = incoming.call_type === 'video' ? 'Видеозвонок' : 'Голосовой звонок';
                             const callerName = callerInfo?.display_name || callerInfo?.username || `Пользователь #${incoming.caller_id}`;
                             new Notification('Tobebe', { 
-                                body: `${label} от ${callerName}`,
+                                body: `${label} от ${escapeHtml(callerName)}`,
                                 icon: callerInfo?.avatar || '/favicon-96x96.png',
                                 tag: `call_${incoming.id}`,
                                 requireInteraction: true
@@ -383,7 +384,6 @@
                             Notification.requestPermission().catch(() => {});
                         }
                     }
-                    
                     
                     if (navigator.vibrate) {
                         navigator.vibrate([200, 100, 200]);
@@ -396,9 +396,8 @@
                 }
             };
 
-            
             tick();
-            notifierState.timer = setInterval(tick, 2000); 
+            notifierState.timer = setInterval(tick, 2000);
         },
         
         stop() {
@@ -409,7 +408,6 @@
             document.getElementById('incomingCallOverlay')?.remove();
             stopCallSound();
         },
-        
         
         async checkNow(config = {}) {
             const apiUrl = config.apiUrl || defaultApiUrl;
