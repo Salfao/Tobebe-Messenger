@@ -21743,11 +21743,11 @@ html.android-device .message-input:empty::before {
             const rect = anchorElement.getBoundingClientRect();
             const bubble = anchorElement.querySelector('.message-bubble');
             const bubbleHeight = Number(bubble?.scrollHeight || bubble?.getBoundingClientRect().height || 0);
-            // Жесткий триггер для нижней зоны, чтобы меню не упиралось в низ экрана.
+            
             if (rect.bottom > (window.innerHeight - 120) || rect.top > (window.innerHeight * 0.62)) {
                 return true;
             }
-            // Очень длинные сообщения всегда открываем через уменьшенный дубль.
+            
             if (bubbleHeight > (window.innerHeight * 0.46)) {
                 return true;
             }
@@ -21831,8 +21831,8 @@ html.android-device .message-input:empty::before {
                 ghostWidth = baseRect.width * ghostScale;
                 ghostHeight = baseRect.height * ghostScale;
             } else {
-                // Для больших сообщений уменьшаем дубль мягко, чтобы визуально оставался читаемым
-                // и при этом гарантированно помещались оба меню (эмодзи сверху и действия снизу).
+               
+                
                 const rawScale = Math.min(
                     availableHeight / Math.max(1, baseRect.height),
                     availableWidth / Math.max(1, baseRect.width)
@@ -21902,8 +21902,8 @@ html.android-device .message-input:empty::before {
                     ? (anchorRect.bottom + menuGap)
                     : Math.max(viewportPadding, Math.min(viewportHeight - menuRect.height - viewportPadding, anchorRect.bottom + menuGap));
                 if (largeOverlayMode) {
-                    // Для уменьшенного дубликата большого сообщения держим меню действий
-                    // поверх самого сообщения, чтобы оно не уезжало за экран.
+                   
+                    
                     const overlayTop = anchorRect.top + 8;
                     const overlayBottom = anchorRect.bottom - menuRect.height - 8;
                     top = Math.max(overlayTop, overlayBottom);
@@ -21919,7 +21919,7 @@ html.android-device .message-input:empty::before {
                 const left = Math.min(Math.max(12, anchorRect.left + 2), window.innerWidth - reactionRect.width - 12);
                 let topBase = anchorRect.top - reactionRect.height - menuGap;
                 if (largeOverlayMode) {
-                    // Меню реакций в large overlay режиме также держим поверх bubble.
+                    
                     topBase = anchorRect.top + 8;
                 }
                 const top = Math.max(viewportPadding, Math.min(viewportHeight - reactionRect.height - viewportPadding, topBase));
